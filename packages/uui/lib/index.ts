@@ -78,3 +78,5 @@ export * from '@umbraco-ui/uui-color-swatches/lib/index.js';
 export * from '@umbraco-ui/uui-color-swatch/lib/index.js';
 
 export * from '@umbraco-ui/uui-modal/lib/index.js';
+
+export * from '@umbraco-ui/uui-notification-area/lib/index.js';
