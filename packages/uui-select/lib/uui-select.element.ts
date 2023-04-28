@@ -173,6 +173,11 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
     this.addEventListener('blur', () => {
       this.style.setProperty('--uui-show-focus-outline', '');
     });
+
+    this.addEventListener(UUISelectEvent.OPTION_CHANGE, (e: Event) => {
+      e.stopPropagation();
+      console.log('option change', e);
+    });
   }
 
   /**
@@ -244,6 +249,10 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
     return this._input;
   }
 
+  private _handleSlotChange(event: Event) {
+    console.log('slot change', event);
+  }
+
   private _renderOption(
     name: string,
     value: string,
@@ -285,25 +294,26 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
 
   render() {
     return html` <select
-      id="native"
-      aria-label=${this.label}
-      @change=${this.setValue}
-      ?disabled=${this.disabled}
-      .name=${this.name}
-      .value=${this.value as string}>
-      <option disabled selected value="" hidden>${this.placeholder}</option>
-      ${this._renderGrouped()}
-      ${this.options
-        .filter(option => !option.group)
-        .map(option =>
-          this._renderOption(
-            option.name,
-            option.value,
-            option.selected,
-            option.disabled
-          )
-        )}
-    </select>`;
+        id="native"
+        aria-label=${this.label}
+        @change=${this.setValue}
+        ?disabled=${this.disabled}
+        .name=${this.name}
+        .value=${this.value as string}>
+        <option disabled selected value="" hidden>${this.placeholder}</option>
+        ${this._renderGrouped()}
+        ${this.options
+          .filter(option => !option.group)
+          .map(option =>
+            this._renderOption(
+              option.name,
+              option.value,
+              option.selected,
+              option.disabled
+            )
+          )}
+      </select>
+      <slot @slot-change=${this._handleSlotChange}></slot>`;
   }
 }
 
