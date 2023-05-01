@@ -1,9 +1,18 @@
 import { FormControlMixin } from '@umbraco-ui/uui-base/lib/mixins';
+import { repeat } from 'lit/directives/repeat.js';
 import { defineElement } from '@umbraco-ui/uui-base/lib/registration';
 import { css, html, LitElement } from 'lit';
-import { property, query, state } from 'lit/decorators.js';
+import {
+  property,
+  query,
+  queryAll,
+  queryAssignedElements,
+  state,
+} from 'lit/decorators.js';
 
 import { UUISelectEvent } from './UUISelectEvent';
+import { UUISelectOptionElement } from './uui-select-option.element';
+import { UUISelectStyles } from './uui-select.styles';
 
 // TODO: Dont set a global interface, we should expose a 'local' interface.
 declare global {
@@ -13,6 +22,7 @@ declare global {
     group?: string;
     selected?: boolean;
     disabled?: boolean;
+    key?: string;
   }
 }
 
@@ -26,75 +36,18 @@ declare global {
 @defineElement('uui-select')
 export class UUISelectElement extends FormControlMixin(LitElement) {
   static styles = [
+    UUISelectStyles,
     css`
       :host {
         position: relative;
         font-family: inherit;
       }
 
-      #native {
-        display: inline-block;
-        font-family: inherit;
-        font-size: var(--uui-select-font-size, var(--uui-size-5));
-        height: var(--uui-select-height, var(--uui-size-11));
-        width: 100%;
-        padding: var(--uui-select-padding-y, var(--uui-size-1))
-          var(--uui-select-padding-x, var(--uui-size-2));
-        color: currentColor;
-        border-radius: 0;
-        box-sizing: border-box;
-        background-color: transparent;
-        border: 1px solid
-          var(--uui-select-border-color, var(--uui-color-border));
-        transition: all 150ms ease;
-      }
-
-      #native:focus {
-        outline: calc(2px * var(--uui-show-focus-outline, 1)) solid
-          var(--uui-color-focus);
-      }
-
-      #native[disabled] {
-        cursor: not-allowed;
-        background-color: var(
-          --uui-select-disabled-background-color,
-          var(--uui-color-disabled)
-        );
-      }
-
-      #native:hover {
-        border: 1px solid
-          var(--uui-select-border-color-hover, var(--uui-color-border-emphasis));
-      }
-
-      option:checked {
-        background: var(
-          --uui-select-selected-option-background-color,
-          var(--uui-color-selected)
-        );
-        color: var(
-          --uui-select-selected-option-color,
-          var(--uui-color-selected-contrast)
-        );
-      }
-
-      /* TODO: a proper focus style has to be implemented. it needs it's own variables */
-      #native:focus {
-        outline-color: var(--uui-select-outline-color, var(--uui-color-focus));
-      }
-
-      #caret {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-      }
-
-      :host([error]) #native {
+      :host([error]) .uui-select {
         border: 1px solid var(--uui-color-danger-standalone);
       }
 
-      :host([error]) #native[disabled] {
+      :host([error]) .uui-select[disabled] {
         border: 1px solid var(--uui-color-danger-standalone);
       }
     `,
@@ -164,6 +117,12 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
   @query('#native')
   protected _input!: HTMLSelectElement;
 
+  @queryAll('option')
+  protected _nativeOptionElements!: NodeListOf<HTMLOptionElement>;
+
+  @queryAssignedElements({ selector: 'uui-select-option' })
+  protected _optionElements!: UUISelectOptionElement[];
+
   constructor() {
     super();
 
@@ -174,10 +133,10 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
       this.style.setProperty('--uui-show-focus-outline', '');
     });
 
-    this.addEventListener(UUISelectEvent.OPTION_CHANGE, (e: Event) => {
-      e.stopPropagation();
-      console.log('option change', e);
-    });
+    this.addEventListener(
+      UUISelectEvent.OPTION_CHANGE,
+      this._handleOptionChange
+    );
   }
 
   /**
@@ -237,6 +196,7 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
     e.stopPropagation();
     const target = e.target as HTMLSelectElement;
     if (e.target) this.value = target.value;
+    console.log('set value', target.value, this.value);
     this.dispatchEvent(
       new UUISelectEvent(UUISelectEvent.CHANGE, {
         bubbles: true,
@@ -250,16 +210,51 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
   }
 
   private _handleSlotChange(event: Event) {
+    this.options = this._optionElements.map((option: Option) => {
+      return {
+        name: option.name,
+        value: option.value,
+        group: option.group,
+        selected: option.selected,
+        disabled: option.disabled,
+        key: option?.key,
+      };
+    });
     console.log('slot change', event);
+  }
+
+  private _handleOptionChange(event: Event) {
+    event.stopPropagation();
+    const target = event.target as UUISelectOptionElement;
+    console.log('option change', target);
+    // const optionElement = Array.from(this._nativeOptionElements).find(
+    //   (option: HTMLOptionElement) => option.id === `option-${target.key}`
+    // )
+
+    // this.options = this.options.map(option => {
+    //   if(option.key === target.key) {
+    //     return {
+    //       name: target.name === option.name ? option.name : target.name,
+    //       value: target.value === option.value ? option.value : target.value,
+    //       group: target.group === option.group ? option.group : target.group,
+    //       selected: target.selected === option.selected ? option.selected : target.selected,
+    //       disabled: target.disabled === option.disabled ? option.disabled : target.disabled,
+    //       key: target.key === option.key ? option.key : target.key,
+    //     }
+    //   }
+    //   return option;
+    // });
   }
 
   private _renderOption(
     name: string,
     value: string,
     selected: boolean | undefined,
-    disabled: boolean | undefined
+    disabled: boolean | undefined,
+    id: string | undefined
   ) {
     return html`<option
+      id="option-${id}"
       value="${value}"
       ?selected=${selected}
       ?disabled=${disabled}>
@@ -277,17 +272,25 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
           ?disabled=${this._disabledGroups.some(
             disabled => disabled.toLowerCase() === group.toLowerCase()
           )}>
-          ${this.options.map(option =>
-            option.group === group
-              ? this._renderOption(
-                  option.name,
-                  option.value,
-                  option.selected,
-                  option.disabled
-                )
-              : ''
-          )}
+          ${this._renderOptions(option => option.group === group)}
         </optgroup>`
+      )}
+    `;
+  }
+
+  private _renderOptions(optionFilter: (option: Option) => boolean) {
+    return html`
+      ${repeat(
+        this.options.filter(optionFilter),
+        option => option.key,
+        option =>
+          this._renderOption(
+            option.name,
+            option.value,
+            option.selected,
+            option.disabled,
+            option.key
+          )
       )}
     `;
   }
@@ -295,25 +298,16 @@ export class UUISelectElement extends FormControlMixin(LitElement) {
   render() {
     return html` <select
         id="native"
+        class="uui-select"
         aria-label=${this.label}
         @change=${this.setValue}
         ?disabled=${this.disabled}
         .name=${this.name}
         .value=${this.value as string}>
         <option disabled selected value="" hidden>${this.placeholder}</option>
-        ${this._renderGrouped()}
-        ${this.options
-          .filter(option => !option.group)
-          .map(option =>
-            this._renderOption(
-              option.name,
-              option.value,
-              option.selected,
-              option.disabled
-            )
-          )}
+        ${this._renderGrouped()} ${this._renderOptions(option => !option.group)}
       </select>
-      <slot @slot-change=${this._handleSlotChange}></slot>`;
+      <slot @slotchange=${this._handleSlotChange}></slot>`;
   }
 }
 

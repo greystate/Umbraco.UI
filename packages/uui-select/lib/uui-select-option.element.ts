@@ -1,4 +1,4 @@
-import { LitElement, css } from 'lit';
+import { LitElement, PropertyValueMap, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { UUISelectEvent } from './UUISelectEvent';
 
@@ -27,8 +27,26 @@ export class UUISelectOptionElement extends LitElement implements Option {
   @property({ type: String })
   group?: string | undefined;
 
+  @property({ type: String })
+  key: string = self.crypto.randomUUID();
+
+  /**
+   * prevent firing the change event on first setter call
+   *
+   * @private
+   * @memberof UUISelectOptionElement
+   */
+  private _init = false;
+
+  protected firstUpdated(
+    _changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>
+  ): void {
+    this._init = true;
+  }
+
   protected willUpdate() {
-    this.dispatchEvent(new UUISelectEvent(UUISelectEvent.OPTION_CHANGE));
+    if (this._init)
+      this.dispatchEvent(new UUISelectEvent(UUISelectEvent.OPTION_CHANGE));
   }
 }
 

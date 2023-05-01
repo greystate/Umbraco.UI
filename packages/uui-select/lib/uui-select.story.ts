@@ -69,6 +69,22 @@ export const AAAOverview: StoryObj = {
   name: 'Overview',
 };
 
+export const OptionsInTheSlot: StoryObj = {
+  render: props =>
+    html`<uui-select
+      .placeholder=${props.placeholder}
+      .disabled=${props.disabled}
+      .label=${props.label}
+      ?error=${props.error}>
+      ${options.map(
+        option =>
+          html`<uui-select-option
+            name="${option.name}"
+            value="${option.value}"></uui-select-option>`
+      )}
+    </uui-select>`,
+};
+
 export const Preselected: StoryObj = {
   render: () =>
     html`<uui-select
